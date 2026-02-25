@@ -1,0 +1,67 @@
+Local AI Chatbot Demo Project Plan
+Date: February 26, 2026
+Target: 1-week delivery
+
+Objective
+- Build a local AI chatbot that answers questions only from uploaded CSV/JSON datasets.
+- Use Streamlit frontend, Python backend, local DB, and Ollama-powered RAG.
+- Containerize frontend and backend and run everything locally with Docker Compose.
+
+Scope
+- Frontend: file upload, dataset selection, chat window, response display.
+- Backend: ingestion API, chat API, local storage, retrieval + LLM response.
+- Data store: SQLite for metadata/records.
+- Retrieval: local embeddings + vector store (Chroma).
+- LLM: Ollama local model.
+
+Architecture
+1. Streamlit UI uploads file to backend.
+2. Backend validates and parses CSV/JSON.
+3. Parsed records are stored in SQLite.
+4. Text chunks are embedded and stored in Chroma.
+5. Chat requests retrieve relevant chunks and call Ollama.
+6. Prompt policy enforces "answer from ingested data only".
+
+Milestones
+- Scaffold project structure.
+- Add health-check endpoints and basic Streamlit app.
+
+- Implement CSV/JSON parser and validation.
+- Persist uploaded data and metadata in SQLite.
+
+- Implement chunking + embedding + vector upsert.
+- Add retrieval-based answer generation.
+
+- Integrate Streamlit upload and chat with backend APIs.
+- Show source snippets in UI.
+
+- Dockerize backend and frontend.
+- Compose with Ollama service and shared volumes.
+
+- Add tests for upload, parse, and chat fallback behavior.
+- Validate failure handling (bad format, empty data, no match).
+
+- Final demo pass and README polish.
+- Prepare 5-minute demo flow and troubleshooting notes.
+
+Definition of Done
+- User can upload CSV/JSON from UI.
+- Uploaded data is stored in SQLite locally.
+- Chat responses are grounded in uploaded data.
+- Out-of-scope questions return "not found in provided data" style response.
+- Stack runs using docker compose without cloud services.
+
+Risks and Mitigations
+- Model too heavy on laptop:
+  - Start with smaller Ollama model (e.g., mistral/phi).
+- Slow embedding:
+  - Use smaller chunk sizes and cache vectors.
+- Hallucinations:
+  - Strict prompt and retrieval confidence threshold.
+
+Next Immediate Build Tasks
+1. Implement parser and DB models.
+2. Implement ingest endpoint.
+3. Implement retrieval and chat endpoint.
+4. Connect Streamlit upload/chat to backend.
+5. Run docker compose and validate local-only workflow.
