@@ -1,0 +1,3 @@
+@echo off
+echo Activating virtual environment...
+cmd /k ".\env\Scripts\activate && python --version"
