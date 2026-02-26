@@ -10,8 +10,7 @@ Starter scaffold for a local-only dataset chatbot demo.
 - Containerization: Docker Compose
 
 ## Quick Start (scaffold)
-1. Copy environment file:
-   - `copy .env.example .env`
+1. Set environment values in `.env` (already added to project root).
 2. Run containers:
    - `docker compose up --build`
 3. Open:
