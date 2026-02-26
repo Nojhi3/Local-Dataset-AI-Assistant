@@ -1,13 +1,55 @@
 import json
 import re
+from dataclasses import dataclass
 
+from app.config import RETRIEVAL_MIN_SCORE
 from app.logging_config import get_logger
 from app.services.db import fetch_rows
 
 logger = get_logger(__name__)
 
 
-def retrieve_relevant_rows(dataset_id: str, question: str, limit: int = 6) -> list[dict]:
+@dataclass
+class RetrievalResult:
+    rows: list[dict]
+    question_tokens: list[str]
+    best_score: int
+    used_fallback: bool
+
+
+STOPWORDS = {
+    "what",
+    "which",
+    "who",
+    "when",
+    "where",
+    "how",
+    "the",
+    "is",
+    "are",
+    "was",
+    "were",
+    "does",
+    "do",
+    "did",
+    "from",
+    "in",
+    "with",
+    "about",
+    "give",
+    "tell",
+    "show",
+    "please",
+    "dataset",
+    "data",
+    "employee",
+    "employees",
+    "works",
+    "work",
+}
+
+
+def retrieve_relevant_rows(dataset_id: str, question: str, limit: int = 6) -> RetrievalResult:
     rows = fetch_rows(dataset_id)
     tokens = _question_tokens(question)
     scored: list[tuple[int, dict]] = []
@@ -20,20 +62,40 @@ def retrieve_relevant_rows(dataset_id: str, question: str, limit: int = 6) -> li
 
     scored.sort(key=lambda item: item[0], reverse=True)
     top_rows = [row for _, row in scored[:limit]]
+    best_score = scored[0][0] if scored else 0
     if top_rows:
+        if best_score < RETRIEVAL_MIN_SCORE:
+            logger.info(
+                "Retrieved rows below threshold dataset_id=%s best_score=%s threshold=%s",
+                dataset_id,
+                best_score,
+                RETRIEVAL_MIN_SCORE,
+            )
+            return RetrievalResult(
+                rows=[],
+                question_tokens=tokens,
+                best_score=best_score,
+                used_fallback=False,
+            )
         logger.info(
-            "Retrieved rows by token match dataset_id=%s requested_limit=%s matched=%s",
+            "Retrieved rows by token match dataset_id=%s requested_limit=%s matched=%s best_score=%s",
             dataset_id,
             limit,
             len(top_rows),
+            best_score,
         )
-        return top_rows
+        return RetrievalResult(
+            rows=top_rows,
+            question_tokens=tokens,
+            best_score=best_score,
+            used_fallback=False,
+        )
     logger.info(
-        "No token match found; falling back to first rows dataset_id=%s fallback_count=%s",
+        "No token match found dataset_id=%s tokens=%s",
         dataset_id,
-        min(limit, len(rows)),
+        tokens,
     )
-    return rows[: min(limit, len(rows))]
+    return RetrievalResult(rows=[], question_tokens=tokens, best_score=0, used_fallback=False)
 
 
 def build_context(rows: list[dict]) -> str:
@@ -45,4 +107,8 @@ def build_context(rows: list[dict]) -> str:
 
 
 def _question_tokens(question: str) -> list[str]:
-    return [token for token in re.findall(r"[a-zA-Z0-9]+", question.lower()) if len(token) > 2]
+    return [
+        token
+        for token in re.findall(r"[a-zA-Z0-9]+", question.lower())
+        if len(token) >= 2 and token not in STOPWORDS
+    ]

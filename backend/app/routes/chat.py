@@ -26,13 +26,20 @@ def chat(request: ChatRequest) -> dict:
         logger.warning("Chat rejected: dataset not found dataset_id=%s", dataset_id)
         raise HTTPException(status_code=404, detail="Dataset not found.")
 
-    rows = retrieve_relevant_rows(dataset_id, request.question, limit=6)
+    retrieval = retrieve_relevant_rows(dataset_id, request.question, limit=6)
+    rows = retrieval.rows
     if not rows:
-        logger.info("Chat has no relevant rows dataset_id=%s", dataset_id)
+        logger.info(
+            "Chat has no relevant rows dataset_id=%s tokens=%s best_score=%s",
+            dataset_id,
+            retrieval.question_tokens,
+            retrieval.best_score,
+        )
         return {
             "answer": "I don't know based on the uploaded dataset.",
             "dataset_id": dataset_id,
             "sources": [],
+            "reason": "no_relevant_context",
         }
 
     context = build_context(rows)

@@ -14,35 +14,32 @@ Scope
 - Retrieval: local embeddings + vector store (Chroma).
 - LLM: Ollama local model.
 
-Architecture
+Architecture (Implemented)
 1. Streamlit UI uploads file to backend.
 2. Backend validates and parses CSV/JSON.
 3. Parsed records are stored in SQLite.
-4. Text chunks are embedded and stored in Chroma.
-5. Chat requests retrieve relevant chunks and call Ollama.
+4. Chat requests retrieve relevant rows using lexical scoring and threshold guardrails.
+5. Retrieved context is passed to Ollama for grounded answer generation.
 6. Prompt policy enforces "answer from ingested data only".
 
-Milestones
+Milestones Status
+Completed:
 - Scaffold project structure.
 - Add health-check endpoints and basic Streamlit app.
-
 - Implement CSV/JSON parser and validation.
 - Persist uploaded data and metadata in SQLite.
-
-- Implement chunking + embedding + vector upsert.
-- Add retrieval-based answer generation.
-
+- Implement retrieval-based answer generation via Ollama.
 - Integrate Streamlit upload and chat with backend APIs.
-- Show source snippets in UI.
+- Add strict "no relevant context => I don't know" behavior.
+- Add tests for upload, invalid format, and chat-without-dataset.
+- Add smoke test and backend logging.
+- Create internal implementation notes and debugging playbook.
 
-- Dockerize backend and frontend.
-- Compose with Ollama service and shared volumes.
+In Progress:
+- Docker end-to-end validation run and model pull verification.
 
-- Add tests for upload, parse, and chat fallback behavior.
-- Validate failure handling (bad format, empty data, no match).
-
-- Final demo pass and README polish.
-- Prepare 5-minute demo flow and troubleshooting notes.
+Pending:
+- Final submission polish (README/demo steps/screenshots).
 
 Definition of Done
 - User can upload CSV/JSON from UI.
@@ -52,16 +49,15 @@ Definition of Done
 - Stack runs using docker compose without cloud services.
 
 Risks and Mitigations
-- Model too heavy on laptop:
-  - Start with smaller Ollama model (e.g., mistral/phi).
-- Slow embedding:
-  - Use smaller chunk sizes and cache vectors.
+- Model mismatch (wrong model name):
+  - Standardize on `llama3.2:3b`.
+- Wrong Ollama host between local and Docker:
+  - Local: `http://127.0.0.1:11434`
+  - Docker: `http://ollama:11434`
 - Hallucinations:
-  - Strict prompt and retrieval confidence threshold.
+  - Strict prompt and retrieval threshold fallback to "I don't know".
 
 Next Immediate Build Tasks
-1. Implement parser and DB models.
-2. Implement ingest endpoint.
-3. Implement retrieval and chat endpoint.
-4. Connect Streamlit upload/chat to backend.
-5. Run docker compose and validate local-only workflow.
+1. Complete Docker E2E validation on laptop.
+2. Capture final demo script + screenshots.
+3. Optional: upgrade retrieval from lexical to vector-based semantic search.

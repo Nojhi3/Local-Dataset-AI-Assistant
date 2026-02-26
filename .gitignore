@@ -6,3 +6,5 @@ __pycache__/
 .env
 backend/data/
 frontend/.streamlit/secrets.toml
+LOCAL_IMPLEMENTATION_NOTES.md
+*.db
