@@ -45,5 +45,6 @@ def test_upload_invalid_file_type(client: TestClient):
 def test_chat_without_dataset(client: TestClient):
     response = client.post("/api/chat", json={"question": "Who is in HR?"})
 
-    assert response.status_code == 400
-    assert response.json()["detail"] == "No dataset found. Upload a dataset first."
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["dataset_id"] == db_service.DEFAULT_DATASET_ID

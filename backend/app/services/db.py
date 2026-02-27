@@ -6,8 +6,14 @@ from typing import Iterable
 
 from app.config import SQLITE_PATH
 from app.logging_config import get_logger
+from app.services.parsing import parse_tabular_file
 
 logger = get_logger(__name__)
+
+DEFAULT_DATASET_ID = "default-employees"
+DEFAULT_DATASET_NAME = "default_employees.csv"
+DEFAULT_DATASET_CREATED_AT = "1970-01-01T00:00:00+00:00"
+DEFAULT_DATASET_FILE = Path(__file__).resolve().parents[1] / "default_data" / DEFAULT_DATASET_NAME
 
 
 def _ensure_parent_dir() -> None:
@@ -54,6 +60,7 @@ def init_db() -> None:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_records_dataset ON records(dataset_id)"
         )
+        _seed_default_dataset(conn)
     logger.info("Database initialized at path=%s", SQLITE_PATH)
 
 
@@ -131,3 +138,58 @@ def fetch_rows(dataset_id: str) -> list[dict]:
 def _row_to_text(row: dict[str, str]) -> str:
     parts = [f"{key}: {value}" for key, value in row.items()]
     return " | ".join(parts)
+
+
+def _seed_default_dataset(conn: sqlite3.Connection) -> None:
+    existing = conn.execute(
+        "SELECT 1 FROM datasets WHERE id = ? LIMIT 1",
+        (DEFAULT_DATASET_ID,),
+    ).fetchone()
+    if existing:
+        return
+
+    if not DEFAULT_DATASET_FILE.exists():
+        logger.warning("Default dataset file missing at %s", DEFAULT_DATASET_FILE)
+        return
+
+    try:
+        file_type, rows = parse_tabular_file(
+            DEFAULT_DATASET_NAME, DEFAULT_DATASET_FILE.read_bytes()
+        )
+    except Exception:
+        logger.exception("Failed to parse default dataset file at %s", DEFAULT_DATASET_FILE)
+        return
+
+    if not rows:
+        logger.warning("Default dataset is empty at %s", DEFAULT_DATASET_FILE)
+        return
+
+    conn.execute(
+        """
+        INSERT INTO datasets (id, name, file_type, row_count, created_at)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            DEFAULT_DATASET_ID,
+            DEFAULT_DATASET_NAME,
+            file_type,
+            len(rows),
+            DEFAULT_DATASET_CREATED_AT,
+        ),
+    )
+    conn.executemany(
+        """
+        INSERT INTO records (dataset_id, row_index, row_json, row_text)
+        VALUES (?, ?, ?, ?)
+        """,
+        [
+            (
+                DEFAULT_DATASET_ID,
+                idx,
+                json.dumps(row, ensure_ascii=True),
+                _row_to_text(row),
+            )
+            for idx, row in enumerate(rows)
+        ],
+    )
+    logger.info("Seeded default dataset dataset_id=%s rows=%s", DEFAULT_DATASET_ID, len(rows))
